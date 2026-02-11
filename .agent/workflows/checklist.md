@@ -36,24 +36,46 @@
 
 ---
 
-## 🚀 Phase 3: 이미지 인식 통합 (진행 중 0%)
+## 🚀 Phase 3: 이미지 인식 통합 (진행 중 40%)
 
-### 3.1 이미지 업로드 프로토타입
-- [ ] Streamlit 이미지 업로드 기능 추가
-- [ ] 업로드된 이미지 표시
-- [ ] 사용자가 보고 상징 선택 (기존 UI 활용)
-- [ ] 전체 파이프라인 실행
+### 3.0 데이터 파일 생성 ✅
+- [x] symbol_definitions.csv (46개 상징 전체 정의)
+- [x] detection_labels_map.csv (COCO → 성경 상징 매핑)
+- [x] emotion_scripture_map.csv (감정 → 구절 매핑)
 
-**예상 소요**: 30분
+**완료일**: 2026-02-11
 
 ---
 
-### 3.2 AI 모듈 통합
+### 3.1 P1 상징 매핑 모듈 ✅
+- [x] SymbolMapper 클래스 구현
+- [x] 객체/장면/감정 → 상징 변환 로직
+- [x] 중복 제거 및 점수 합산
+- [x] 단위 테스트 (SIM-01 통과)
+- [x] 웹 테스트 대시보드 (test_symbol_mapper_web.py)
+
+**완료일**: 2026-02-11  
+**예상 소요**: 2시간 → **실제 소요**: 2시간
+
+---
+
+### 3.2 P2 주제 매핑 모듈 ✅
+- [x] ThemeMapper 클래스 구현
+- [x] 46개 상징 → 24개 주제 변환
+- [x] topic_weights_v1.csv 기반 가중치 적용
+- [x] 단위 테스트 (SIM-01 통과)
+
+**완료일**: 2026-02-11  
+**예상 소요**: 1-2시간 → **실제 소요**: 1시간
+
+---
+
+### 3.3 AI 모듈 통합 (대기 중)
 
 #### A. 객체 인식 (YOLO/COCO)
 - [ ] YOLOv8 모델 다운로드 및 설정
 - [ ] ObjectDetector 클래스 구현
-- [ ] detection_labels_map.csv 생성 (COCO → 성경 상징 매핑)
+- [x] detection_labels_map.csv 생성 (COCO → 성경 상징 매핑) ✅
 - [ ] 신뢰도 임계값 설정 (0.5 이상)
 - [ ] 온디바이스 추론 구현
 - [ ] 단위 테스트 (테스트 이미지 5장)
@@ -70,7 +92,17 @@
 
 **예상 소요**: 2-3시간
 
-#### C. OCR (텍스트 추출)
+#### C. 감정 인식 (MobileNetV2) ⭐ 신규
+- [ ] MobileNetV2 모델 준비
+- [ ] EmotionDetector 클래스 구현
+- [ ] 7개 기본 감정 분류
+- [ ] EmotionVector 생성
+- [x] emotion_scripture_map.csv 생성 ✅
+- [ ] 단위 테스트
+
+**예상 소요**: 2-3시간
+
+#### D. OCR (텍스트 추출)
 - [ ] EasyOCR 설치 및 설정
 - [ ] TextExtractor 클래스 구현
 - [ ] 한글/영어 텍스트 추출
@@ -80,14 +112,15 @@
 
 **예상 소요**: 1-2시간
 
-#### D. 통합 파이프라인
+#### E. 통합 파이프라인
 - [ ] MultimodalIntegrator 클래스 구현
 - [ ] 멀티모달 신호 통합 로직
   - [ ] 객체 인식 결과 통합
   - [ ] 장면 분류 결과 통합
+  - [ ] 감정 인식 결과 통합
   - [ ] OCR 결과 통합
-- [ ] 신호 가중치 조정 (object: 0.5, scene: 0.3, text: 0.2)
-- [ ] 최종 상징 리스트 생성 (Top 5)
+- [ ] 신호 가중치 조정 (object: 0.5, scene: 0.3, emotion: 0.2)
+- [ ] 최종 상징 리스트 생성 (Top 10)
 - [ ] ImagePipeline 메인 클래스 구현
 - [ ] End-to-End 테스트
 
@@ -95,7 +128,7 @@
 
 ---
 
-### 3.3 성능 최적화
+### 3.4 성능 최적화
 - [ ] 모델 경량화 (ONNX 변환)
 - [ ] 배치 처리 구현
 - [ ] 캐싱 전략 적용
@@ -106,7 +139,7 @@
 
 ---
 
-### 3.4 대시보드 통합
+### 3.5 대시보드 통합
 - [ ] ImagePipeline을 bible_gpt_dashboard.py에 통합
 - [ ] 이미지 업로드 UI 개선
 - [ ] 자동 상징 추출 결과 표시
@@ -117,7 +150,8 @@
 
 ---
 
-**Phase 3 총 예상 소요**: 1-2일
+**Phase 3 총 예상 소요**: 1-2일  
+**Phase 3 현재 진행률**: 40% (P1/P2 완료, AI 모듈 대기)
 
 ---
 
@@ -215,38 +249,51 @@
 ```
 Phase 1 (기본 검증)         ████████████████████ 100%  ✅
 Phase 2 (데이터 품질)       ████████████████████ 100%  ✅
-Phase 3 (이미지 인식)       ░░░░░░░░░░░░░░░░░░░░   0%  ⏳ 다음!
+Phase 3 (이미지 인식)       ████████░░░░░░░░░░░░  40%  🚀 진행 중!
 Phase 4 (전체 검증)         ░░░░░░░░░░░░░░░░░░░░   0%  ⏸️
 Phase 5 (UX/UI)            ░░░░░░░░░░░░░░░░░░░░   0%  ⏸️
 Phase 6 (프로덕션)          ░░░░░░░░░░░░░░░░░░░░   0%  ⏸️
 ```
 
-**전체 진행률**: 33.3% (2/6 Phase 완료)
+**전체 진행률**: 40.0% (2.4/6 Phase 완료)
 
 ---
 
 ## 🎯 다음 작업 (우선순위)
 
-### 🔥 즉시 (오늘 가능)
-- [ ] Phase 3.1: 이미지 업로드 프로토타입 (30분)
+### 🔥 즉시 (다음 세션)
+- [ ] Phase 3.3: AI 모듈 통합
+  - [ ] ObjectDetector (YOLO) 구현
+  - [ ] SceneAnalyzer (CLIP) 구현
+  - [ ] EmotionDetector (MobileNetV2) 구현
 
-### 📅 다음 세션 (1-2일)
-- [ ] Phase 3.2: AI 모듈 통합
-  - [ ] Day 1: YOLO 객체 인식 구현
-  - [ ] Day 2: CLIP + EasyOCR + 통합
-  - [ ] Day 3: 대시보드 통합 및 테스트
+### 📅 이번 주 (2-3일)
+- [ ] Phase 3.3: OCR + 통합 파이프라인
+- [ ] Phase 3.4: 성능 최적화
+- [ ] Phase 3.5: 대시보드 통합
 
 ---
 
 ## 📝 완료된 주요 산출물
 
+### Phase 1-2 (데이터 품질)
 1. ✅ **정본 MD 핵심 규칙 요약본** (`정본_MD_핵심규칙_AI개발용.md`)
 2. ✅ **신학적 안전 규칙** (`theological_safety_rules.json`)
 3. ✅ **데이터 감사 보고서** (`data_audit_report.json`)
 4. ✅ **데이터 수정 보고서** (`data_modification_report.json`)
+
+### Phase 3 (AI 모듈)
 5. ✅ **프로젝트 로드맵** (`.agent/workflows/project_roadmap.md`)
-6. ✅ **AI 모듈 구현 계획** (`.agent/workflows/ai_module_implementation.md`)
-7. ✅ **전체 체크리스트** (`.agent/workflows/checklist.md`) ← 현재 문서
+6. ✅ **AI 모듈 구현 계획 v2.0** (`.agent/workflows/ai_module_implementation.md`)
+7. ✅ **AI 모듈 추가 구현** (`.agent/workflows/ai_module_additions.md`)
+8. ✅ **AI 비교 분석** (`.agent/workflows/ai_comparison_analysis.md`)
+9. ✅ **46개 상징 정의** (`data/symbol_definitions.csv`)
+10. ✅ **COCO 매핑** (`data/detection_labels_map.csv`)
+11. ✅ **감정 매핑** (`data/emotion_scripture_map.csv`)
+12. ✅ **P1 상징 매핑 모듈** (`modules/symbol_mapper.py`)
+13. ✅ **P2 주제 매핑 모듈** (`modules/theme_mapper.py`)
+14. ✅ **웹 테스트 대시보드** (`test_symbol_mapper_web.py`)
+15. ✅ **전체 체크리스트** (`.agent/workflows/checklist.md`) ← 현재 문서
 
 ---
 

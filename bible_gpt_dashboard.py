@@ -11,6 +11,8 @@ import random
 # 데이터 로더 및 설정 임포트
 import config
 import data_loader
+import importlib
+importlib.reload(data_loader)  # 개발 중 모듈 변경 반영을 위해 강제 리로드
 
 # 페이지 설정
 st.set_page_config(
@@ -24,7 +26,7 @@ st.set_page_config(
 # 데이터 로딩 (실제 CSV 파일 기반)
 # ============================================================================
 
-@st.cache_data
+# @st.cache_data  # 캐시 임시 비활성화
 def load_data():
     """모든 데이터를 로드하고 캐싱"""
     bible_objects_df, detection_labels_df, topic_weights_df, verse_bank_df, topic_symbol_mapping = data_loader.load_all_data()
@@ -37,6 +39,13 @@ def load_data():
     for idx, row in verse_bank_df.iterrows():
         verse_dict = data_loader.convert_verse_to_dict(row, topic_symbol_mapping)
         verses_db.append(verse_dict)
+    
+    # 디버그: 침대가 포함된 구절 수 확인
+    bed_count = sum(1 for v in verses_db if "침대" in v.get('symbols', []))
+    print(f"\n[DEBUG] 생성된 VERSES_DB: 총 {len(verses_db)}개 구절")
+    print(f"[DEBUG] '침대'가 포함된 구절: {bed_count}개")
+    if verses_db:
+        print(f"[DEBUG] 첫 번째 구절 symbols: {verses_db[0].get('symbols', [])[:5]}")
     
     return bible_objects_df, topic_weights_df, symbol_categories, verses_db
 
