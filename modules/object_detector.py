@@ -88,7 +88,13 @@ class ObjectDetector:
                 if coco_class in self.label_map:
                     mapping = self.label_map[coco_class]
                     bible_symbol = mapping.get('bible_symbol')
-                    priority = mapping.get('priority', 0.5)
+                    
+                    # 우선순위 확인 및 타입 변환 (str -> float 방지)
+                    raw_priority = mapping.get('priority', 0.5)
+                    try:
+                        priority = float(raw_priority)
+                    except (ValueError, TypeError):
+                        priority = 0.5
                     
                     # 상징이 있는 경우에만 추가 (priority 0 제외)
                     if pd.notna(bible_symbol) and bible_symbol and priority > 0:
@@ -97,7 +103,7 @@ class ObjectDetector:
                             'bible_symbol': bible_symbol,
                             'confidence': conf,
                             'bbox': box.xyxy[0].tolist(),
-                            'priority': float(priority)
+                            'priority': priority
                         })
                         
         return detected_objects

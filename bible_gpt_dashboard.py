@@ -7,13 +7,12 @@ import plotly.graph_objects as go
 import plotly.express as px
 from typing import Dict, List, Tuple
 import random
+from PIL import Image
 
 # 데이터 로더 및 설정 임포트
 import config
 import data_loader
-import importlib
 from modules.image_pipeline import ImagePipeline
-importlib.reload(data_loader)  # 개발 중 모듈 변경 반영을 위해 강제 리로드
 
 # 페이지 설정
 st.set_page_config(
@@ -27,7 +26,8 @@ st.set_page_config(
 # 데이터 로딩 (실제 CSV 파일 기반)
 # ============================================================================
 
-# @st.cache_data  # 캐시 임시 비활성화
+# @st.cache_data
+@st.cache_data
 def load_data():
     """모든 데이터를 로드하고 캐싱"""
     bible_objects_df, detection_labels_df, topic_weights_df, verse_bank_df, topic_symbol_mapping = data_loader.load_all_data()
@@ -65,6 +65,32 @@ PLACE_TYPES = config.PLACE_TYPES
 # 부적절한 입력 패턴 (가이드라인 엔진)
 INAPPROPRIATE_PATTERNS = config.INAPPROPRIATE_PATTERNS
 
+
+# ============================================================================
+# AI 파이프라인 지연 로딩 및 캐싱
+# ============================================================================
+
+@st.cache_resource
+def get_ai_pipeline():
+    """AI 파이프라인 모델들을 한 번만 로드하여 메모리에 고정"""
+    return ImagePipeline()
+
+def preprocess_image(image_file):
+    """분석 속도 향상을 위해 이미지 리사이징"""
+    from PIL import Image
+    try:
+        img = Image.open(image_file)
+        # 최대 640px로 리사이징 (YOLO 최적 크기)
+        img.thumbnail((640, 640))
+        temp_path = "temp_process.jpg"
+        img.save(temp_path, "JPEG", quality=85)
+        return temp_path
+    except Exception as e:
+        print(f"[ERROR] Image preprocessing failed: {e}")
+        # 리사이징 실패 시 원본 그대로 저장하여 진행
+        with open("temp_process.jpg", "wb") as f:
+            f.write(image_file.getbuffer())
+        return "temp_process.jpg"
 
 # ============================================================================
 # 핵심 로직 함수
@@ -315,12 +341,6 @@ def main():
     st.sidebar.markdown("---")
     st.sidebar.markdown(f"**합계**: {sum(weights.values()):.2f}")
     
-    # 기본 시나리오 버튼
-    st.sidebar.markdown("---")
-    st.sidebar.header("🎯 기본 시나리오")
-    if st.sidebar.button("SIM-01 로드 (고난 중 밤에 기도)"):
-        st.session_state.sim01_loaded = True
-    
     # 메인 영역
     col1, col2 = st.columns([1, 1])
     
@@ -329,7 +349,7 @@ def main():
         
         # --- [NEW] 이미지 업로드 섹션 ---
         st.subheader("🖼️ 이미지 분석 (AI 자동 인식)")
-        uploaded_file = st.file_uploader("사진을 업로드하면 AI가 상징을 자동으로 추출합니다.", type=['jpg', 'jpeg', 'png'])
+        uploaded_file = st.file_uploader("사진 중 하나를 업로드하세요.", type=['jpg', 'jpeg', 'png'])
         
         ai_symbols = []
         ai_analysis = None
@@ -337,27 +357,30 @@ def main():
         if uploaded_file is not None:
             st.image(uploaded_file, caption='업로드된 사진', use_container_width=True)
             
-            # 임시 파일 저장 및 처리
-            with open("temp_upload.jpg", "wb") as f:
-                f.write(uploaded_file.getbuffer())
-            
             with st.spinner("AI 엔진이 이미지를 분석 중입니다..."):
                 try:
-                    # 파이프라인 싱글톤 패턴처럼 초기화 (캐싱 고려 가능)
-                    if 'pipeline' not in st.session_state:
-                        st.session_state.pipeline = ImagePipeline()
+                    # 1. 이미지 최적화 (리사이징)
+                    temp_path = preprocess_image(uploaded_file)
                     
-                    # 1. AI 분석 수행
-                    # 팁: 실제 ImagePipeline.process는 현재 final_symbols만 반환하므로, 
-                    # 상세 분석 결과를 위해 개별 모듈 직접 호출 또는 process 수정 필요
-                    # 여기서는 통합된 상징 리스트를 우선 사용
-                    pipeline = st.session_state.pipeline
+                    # 2. 파이프라인 로드 (캐시 사용)
+                    pipeline = get_ai_pipeline()
                     
-                    # 상세 분석을 위해 개별 호출 (시각화용)
-                    obj_res = pipeline.object_detector.detect("temp_upload.jpg")
-                    scene_res = pipeline.scene_analyzer.analyze("temp_upload.jpg")
-                    emo_res = pipeline.emotion_detector.detect("temp_upload.jpg")
-                    ocr_res = pipeline.text_extractor.extract("temp_upload.jpg")
+                    # 3. AI 스마트 분석 수행 (내부에서 OCR 필요성 자동 판단)
+                    # 상세 분석 리포트를 위해 개별 결과도 필요하지만, 
+                    # 여기서는 통합 분석 기능을 우선 활용하거나 기존대로 개별 호출 가능
+                    # 사용자 요청에 따라 '내부 로직'으로 숨기기 위해 pipeline.process 추천
+                    
+                    # 상세 리포트 시각화용 개별 데이터 추출 (Smart OCR 로직 대시보드 반영)
+                    obj_res = pipeline.object_detector.detect(temp_path)
+                    scene_res = pipeline.scene_analyzer.analyze(temp_path)
+                    emo_res = pipeline.emotion_detector.detect(temp_path)
+                    
+                    # OCR은 ImagePipeline의 로직을 따라 자동 결정
+                    ocr_res = []
+                    text_bearing_objects = {'book', 'stop sign', 'traffic light', 'laptop', 'cell phone', 'tv'}
+                    if ({obj['coco_class'] for obj in obj_res} & text_bearing_objects) or \
+                       (scene_res.get('location', {}).get('label') == 'city street'):
+                        ocr_res = pipeline.text_extractor.extract(temp_path)
                     
                     final_res = pipeline.integrator.integrate(obj_res, scene_res, emo_res, ocr_res)
                     ai_symbols = [s['symbol'] for s in final_res]
@@ -371,7 +394,7 @@ def main():
                         'final': final_res
                     }
                     
-                    st.success(f"분석 완료! {len(ai_symbols)}개의 상징이 감지되었습니다.")
+                    st.success("분석 완료!")
                     
                 except Exception as e:
                     st.error(f"AI 분석 중 오류 발생: {e}")
@@ -393,6 +416,8 @@ def main():
                     st.write(f"- 장소: **{s['location']['label']}** ({s['location']['confidence']:.2f})")
                     st.write(f"- 시간: **{s['time']['label']}** ({s['time']['confidence']:.2f})")
                     st.write(f"- 분위기: **{s['mood']['label']}** ({s['mood']['confidence']:.2f})")
+                    if 'weather' in s:
+                        st.write(f"- 날씨: **{s['weather']['label']}** ({s['weather']['confidence']:.2f})")
                 
                 with tabs[2]:
                     e = ai_analysis['emotion']
@@ -407,16 +432,10 @@ def main():
 
         st.markdown("---")
         
-        # SIM-01 기본값 설정
-        if 'sim01_loaded' in st.session_state and st.session_state.sim01_loaded:
-            default_symbols = ["침대", "어둠"]  # 병상 → 침대로 변경 (실제 데이터에 존재)
-            default_time = "자정"
-            default_place = "병원"
-            st.info("✅ SIM-01 시나리오가 로드되었습니다!")
-        else:
-            default_symbols = []
-            default_time = "낮"
-            default_place = "기타"
+        # 기본값 설정
+        default_symbols = []
+        default_time = "낮"
+        default_place = "기타"
         
         # 이미지 상징 선택
         st.subheader("1️⃣ 이미지 상징 선택")
@@ -425,26 +444,35 @@ def main():
             all_symbols.extend(items)
         
         selected_symbols = st.multiselect(
-            "이미지에서 인식된 상징을 선택하세요 (최대 5개)",
+            "인식된 상징 (자동 추출되거나 수동으로 선택할 수 있습니다)",
             all_symbols,
-            default=ai_symbols if ai_symbols else default_symbols,
+            default=[s for s in ai_symbols if s in all_symbols][:5] if ai_symbols else default_symbols,
             max_selections=5
         )
         
-        # 시간대 선택
+        # 시간대 선택 (AI 분석 결과 연동)
         st.subheader("2️⃣ 시간대 선택")
-        time_bucket = st.selectbox(
+        scene_time = ai_analysis['scene']['time']['label'] if ai_analysis else "낮"
+        # 영문 라벨 -> 한글 매핑 (CLIP 라벨 기반)
+        time_map = {"dawn morning": "새벽", "bright daytime": "낮", "sunset evening": "저녁", "dark night": "밤", "midnight": "자정"}
+        mapped_time = time_map.get(scene_time, "낮")
+        
+        selected_time = st.selectbox(
             "사진 촬영 시간대",
             TIME_BUCKETS,
-            index=TIME_BUCKETS.index(default_time)
+            index=TIME_BUCKETS.index(mapped_time) if mapped_time in TIME_BUCKETS else 2
         )
         
-        # 장소 선택
+        # 장소 선택 (AI 분석 결과 연동)
         st.subheader("3️⃣ 장소 선택")
-        place = st.selectbox(
+        scene_loc = ai_analysis['scene']['location']['label'] if ai_analysis else "기타"
+        loc_map = {"indoor space": "집", "outdoor plaza": "공원", "church sanctuary": "교회", "hospital room": "병원", "nature forest": "산", "sea side": "바다"}
+        mapped_loc = loc_map.get(scene_loc, "기타")
+        
+        selected_place = st.selectbox(
             "촬영 장소",
-            PLACE_TYPES,
-            index=PLACE_TYPES.index(default_place)
+            config.PLACE_TYPES,
+            index=config.PLACE_TYPES.index(mapped_loc) if mapped_loc in config.PLACE_TYPES else 9
         )
         
         # 추가 입력 (가이드라인 필터 테스트용)
@@ -469,7 +497,7 @@ def main():
                 else:
                     # 추천 실행
                     with st.spinner("추천 중..."):
-                        results = recommend_verses(selected_symbols, time_bucket, place, weights)
+                        results = recommend_verses(selected_symbols, selected_time, selected_place, weights)
                     
                     st.success("✅ 추천 완료!")
                     

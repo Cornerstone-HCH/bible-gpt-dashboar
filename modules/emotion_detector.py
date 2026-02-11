@@ -84,8 +84,31 @@ class EmotionDetector:
         return {
             'primary_label': primary_label,
             'intensity': intensity,
-            'emotion_probs': emotion_probs
+            'emotion_probs': emotion_probs,
+            'suggested_symbols': self._map_to_symbols(primary_label, intensity)
         }
+
+    def _map_to_symbols(self, label: str, intensity: float) -> List[Dict]:
+        """감정 -> 성경 상징 매핑 (120개 표준 라벨 기준)"""
+        mapping = {
+            'happy': ['잔', '해'],
+            'sad': ['눈물'],
+            'surprise': ['빛'],
+            'fear': ['어둠', '폭풍'],
+            'angry': ['불', '번개'],
+            'disgust': ['사막'],
+            'neutral': ['집']
+        }
+        
+        symbols = []
+        if label in mapping:
+            for s in mapping[label]:
+                symbols.append({
+                    'symbol': s,
+                    'confidence': intensity,
+                    'source': 'emotion'
+                })
+        return symbols
 
 if __name__ == '__main__':
     # 간단한 테스트

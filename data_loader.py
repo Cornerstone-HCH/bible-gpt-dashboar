@@ -4,6 +4,9 @@ import pandas as pd
 from typing import Dict, List, Tuple
 import config
 
+import streamlit as st
+
+@st.cache_data
 def load_bible_objects() -> pd.DataFrame:
     """
     120개 피사체(상징) 정의 로드
@@ -19,6 +22,7 @@ def load_bible_objects() -> pd.DataFrame:
         print(f"[ERROR] 피사체 정의 로드 실패: {e}")
         return pd.DataFrame()
 
+@st.cache_data
 def load_detection_labels() -> pd.DataFrame:
     """
     COCO 모델 라벨 매핑 로드
@@ -34,6 +38,7 @@ def load_detection_labels() -> pd.DataFrame:
         print(f"[ERROR] 탐지 라벨 매핑 로드 실패: {e}")
         return pd.DataFrame()
 
+@st.cache_data
 def load_topic_weights() -> pd.DataFrame:
     """
     120개 피사체 × 24개 주제 가중치 매트릭스 로드
@@ -49,6 +54,7 @@ def load_topic_weights() -> pd.DataFrame:
         print(f"[ERROR] 주제 가중치 매트릭스 로드 실패: {e}")
         return pd.DataFrame()
 
+@st.cache_data
 def load_topic_symbol_mapping() -> Dict[str, List[str]]:
     """
     주제별 관련 상징 매핑 로드
@@ -74,6 +80,7 @@ def load_topic_symbol_mapping() -> Dict[str, List[str]]:
         print(f"[WARNING] 주제별 상징 매핑 로드 실패: {e}")
         return {}
 
+@st.cache_data
 def load_verse_bank() -> pd.DataFrame:
     """
     24개 주제별 성경 구절 데이터베이스 로드

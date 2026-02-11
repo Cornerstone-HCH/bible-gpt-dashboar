@@ -54,23 +54,10 @@ class MultimodalIntegrator:
             self._update_symbol_score(symbol_scores, symbol, score, suggestion['source'])
             
         # 3. 감정 인식 통합
-        if emotion_results:
-            primary_label = emotion_results['primary_label']
-            intensity = emotion_results['intensity']
-            # 감정 -> 상징 매핑 (임시: SceneAnalyzer와 유사한 방식)
-            # 7개 기본 감정에 따른 상징 연결 (정본 매핑 필요)
-            emotion_to_symbol = {
-                'happy': '결혼·잔치',
-                'sad': '고립·홀로',
-                'surprise': '해·빛',
-                'fear': '폭풍·바람',
-                'angry': '전쟁·무기',
-                'disgust': '광야·거친 돌',
-                'neutral': '실내·집중'
-            }
-            if primary_label in emotion_to_symbol:
-                symbol = emotion_to_symbol[primary_label]
-                score = intensity * self.weights['emotion']
+        if emotion_results and 'suggested_symbols' in emotion_results:
+            for suggestion in emotion_results['suggested_symbols']:
+                symbol = suggestion['symbol']
+                score = suggestion['confidence'] * self.weights['emotion']
                 self._update_symbol_score(symbol_scores, symbol, score, 'emotion')
                 
         # 4. OCR 텍스트 통합

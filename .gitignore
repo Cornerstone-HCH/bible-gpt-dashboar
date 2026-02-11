@@ -42,3 +42,13 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Project Temp Files
+temp_*.jpg
+output_*.jpg
+
+# Models
+*.pt
+*.h5
+*.onnx
+*.weights

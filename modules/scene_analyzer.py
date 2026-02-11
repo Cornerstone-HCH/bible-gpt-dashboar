@@ -35,7 +35,7 @@ class SceneAnalyzer:
             'location': [
                 'indoor space', 'outdoor plaza', 'church sanctuary', 
                 'hospital room', 'nature forest', 'city street', 
-                'wilderness desert', 'mountain top', 'sea side'
+                'wilderness desert', 'mountain top', 'sea side', 'snowy field'
             ],
             'time': [
                 'dawn morning', 'bright daytime', 'sunset evening', 
@@ -44,31 +44,42 @@ class SceneAnalyzer:
             'mood': [
                 'peaceful and calm', 'sad and sorrowful', 'joyful and happy', 
                 'reverent and holy', 'dark and scary', 'lonely and isolated'
+            ],
+            'weather': [
+                'sunny day', 'rainy weather', 'snowy winter', 'cloudy sky', 
+                'stormy weather', 'foggy morning'
             ]
         }
         
-        # 카테고리 영문 -> 한글 상징 매핑
-        self.label_to_symbol = {
-            'indoor space': '실내·집중',
-            'outdoor plaza': '실외·광장',
-            'church sanctuary': '교회·예배당',
-            'hospital room': '병실·대기실',
-            'nature forest': '숲·나무',
-            'city street': '도시·거리',
-            'wilderness desert': '광야·거친 돌',
-            'mountain top': '산·언덕',
-            'sea side': '강·바다',
-            'dawn morning': '해·빛',
-            'bright daytime': '해·빛',
-            'sunset evening': '달·별',
-            'dark night': '달·별',
-            'midnight': '달·별',
-            'peaceful and calm': '평강·샬롬',
-            'sad and sorrowful': '고립·홀로',
-            'joyful and happy': '결혼·잔치',
-            'reverent and holy': '교회·예배당',
-            'dark and scary': '골목·어둑함',
-            'lonely and isolated': '고립·홀로'
+        # 카테고리 영문 -> 한글 상징 매핑 (120개 표준 라벨 기준)
+        self.label_to_symbols = {
+            'indoor space': ['집'],
+            'outdoor plaza': ['공원'],
+            'church sanctuary': ['교회'],
+            'hospital room': ['병원'],
+            'nature forest': ['숲', '나무'],
+            'city street': ['표지판', '신호등'],
+            'wilderness desert': ['사막'],
+            'mountain top': ['산'],
+            'sea side': ['바다'],
+            'snowy field': ['눈', '서리'],
+            'dawn morning': ['해', '빛'],
+            'bright daytime': ['해', '빛'],
+            'sunset evening': ['달', '별'],
+            'dark night': ['달', '별', '어둠'],
+            'midnight': ['달', '별', '어둠'],
+            'peaceful and calm': ['양'], # 평강의 상징
+            'sad and sorrowful': ['눈물'],
+            'joyful and happy': ['잔'],
+            'reverent and holy': ['교회'],
+            'dark and scary': ['어둠'],
+            'lonely and isolated': ['들꽃'], # 사막 대신 좀 더 중립적인 광야/들꽃 느낌으로 변경
+            'sunny day': ['해', '빛'],
+            'rainy weather': ['비'],
+            'snowy winter': ['눈', '서리'],
+            'cloudy sky': ['구름'],
+            'stormy weather': ['번개', '물'],
+            'foggy morning': ['안개']
         }
 
     def analyze(self, image_path: str) -> Dict:
@@ -117,13 +128,14 @@ class SceneAnalyzer:
                     'confidence': conf
                 }
                 
-                # 상징 추천 추가
-                if label in self.label_to_symbol:
-                    suggested_symbols.append({
-                        'symbol': self.label_to_symbol[label],
-                        'confidence': conf,
-                        'source': f'scene_{category}'
-                    })
+                # 상징 추천 추가 (여러 심볼 지원)
+                if label in self.label_to_symbols:
+                    for symbol in self.label_to_symbols[label]:
+                        suggested_symbols.append({
+                            'symbol': symbol,
+                            'confidence': conf,
+                            'source': f'scene_{category}'
+                        })
                     
         results['suggested_symbols'] = suggested_symbols
         return results
