@@ -12,6 +12,7 @@ import random
 import config
 import data_loader
 import importlib
+from modules.image_pipeline import ImagePipeline
 importlib.reload(data_loader)  # 개발 중 모듈 변경 반영을 위해 강제 리로드
 
 # 페이지 설정
@@ -326,6 +327,86 @@ def main():
     with col1:
         st.header("📥 입력 설정")
         
+        # --- [NEW] 이미지 업로드 섹션 ---
+        st.subheader("🖼️ 이미지 분석 (AI 자동 인식)")
+        uploaded_file = st.file_uploader("사진을 업로드하면 AI가 상징을 자동으로 추출합니다.", type=['jpg', 'jpeg', 'png'])
+        
+        ai_symbols = []
+        ai_analysis = None
+        
+        if uploaded_file is not None:
+            st.image(uploaded_file, caption='업로드된 사진', use_container_width=True)
+            
+            # 임시 파일 저장 및 처리
+            with open("temp_upload.jpg", "wb") as f:
+                f.write(uploaded_file.getbuffer())
+            
+            with st.spinner("AI 엔진이 이미지를 분석 중입니다..."):
+                try:
+                    # 파이프라인 싱글톤 패턴처럼 초기화 (캐싱 고려 가능)
+                    if 'pipeline' not in st.session_state:
+                        st.session_state.pipeline = ImagePipeline()
+                    
+                    # 1. AI 분석 수행
+                    # 팁: 실제 ImagePipeline.process는 현재 final_symbols만 반환하므로, 
+                    # 상세 분석 결과를 위해 개별 모듈 직접 호출 또는 process 수정 필요
+                    # 여기서는 통합된 상징 리스트를 우선 사용
+                    pipeline = st.session_state.pipeline
+                    
+                    # 상세 분석을 위해 개별 호출 (시각화용)
+                    obj_res = pipeline.object_detector.detect("temp_upload.jpg")
+                    scene_res = pipeline.scene_analyzer.analyze("temp_upload.jpg")
+                    emo_res = pipeline.emotion_detector.detect("temp_upload.jpg")
+                    ocr_res = pipeline.text_extractor.extract("temp_upload.jpg")
+                    
+                    final_res = pipeline.integrator.integrate(obj_res, scene_res, emo_res, ocr_res)
+                    ai_symbols = [s['symbol'] for s in final_res]
+                    
+                    # 시각화 데이터 저장
+                    ai_analysis = {
+                        'objects': obj_res,
+                        'scene': scene_res,
+                        'emotion': emo_res,
+                        'ocr': ocr_res,
+                        'final': final_res
+                    }
+                    
+                    st.success(f"분석 완료! {len(ai_symbols)}개의 상징이 감지되었습니다.")
+                    
+                except Exception as e:
+                    st.error(f"AI 분석 중 오류 발생: {e}")
+        
+        # AI 분석 결과 시각화 (Expander)
+        if ai_analysis:
+            with st.expander("🔍 AI 상세 분석 리포트 보기", expanded=False):
+                tabs = st.tabs(["객체(YOLO)", "장면(CLIP)", "감정(MBV2)", "텍스트(OCR)"])
+                
+                with tabs[0]:
+                    if ai_analysis['objects']:
+                        for obj in ai_analysis['objects']:
+                            st.write(f"- **{obj['coco_class']}** → {obj['bible_symbol']} (신뢰도: {obj['confidence']:.2f})")
+                    else:
+                        st.write("감지된 객체 없음")
+                
+                with tabs[1]:
+                    s = ai_analysis['scene']
+                    st.write(f"- 장소: **{s['location']['label']}** ({s['location']['confidence']:.2f})")
+                    st.write(f"- 시간: **{s['time']['label']}** ({s['time']['confidence']:.2f})")
+                    st.write(f"- 분위기: **{s['mood']['label']}** ({s['mood']['confidence']:.2f})")
+                
+                with tabs[2]:
+                    e = ai_analysis['emotion']
+                    st.write(f"- 주 감정: **{e['primary_label']}** ({e['intensity']:.2f})")
+                
+                with tabs[3]:
+                    if ai_analysis['ocr']:
+                        for t in ai_analysis['ocr']:
+                            st.write(f"- '{t['text']}' (Conf: {t['confidence']:.2f})")
+                    else:
+                        st.write("추출된 텍스트 없음")
+
+        st.markdown("---")
+        
         # SIM-01 기본값 설정
         if 'sim01_loaded' in st.session_state and st.session_state.sim01_loaded:
             default_symbols = ["침대", "어둠"]  # 병상 → 침대로 변경 (실제 데이터에 존재)
@@ -346,7 +427,7 @@ def main():
         selected_symbols = st.multiselect(
             "이미지에서 인식된 상징을 선택하세요 (최대 5개)",
             all_symbols,
-            default=default_symbols,
+            default=ai_symbols if ai_symbols else default_symbols,
             max_selections=5
         )
         

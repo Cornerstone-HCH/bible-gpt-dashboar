@@ -109,12 +109,12 @@
 
 ---
 
-### 3.5 대시보드 통합
-- [ ] ImagePipeline을 bible_gpt_dashboard.py에 통합
-- [ ] 이미지 업로드 UI 개선
-- [ ] 자동 상징 추출 결과 표시
-- [ ] 수동 수정 기능 (사용자가 상징 추가/제거 가능)
-- [ ] 분석 과정 시각화 (어떤 상징을 어떻게 감지했는지)
+### 3.5 대시보드 통합 ✅
+- [x] ImagePipeline을 bible_gpt_dashboard.py에 통합
+- [x] 이미지 업로드 UI (st.file_uploader) 추가
+- [x] AI 자동 상징 추출 및 자동 선택 기능 구현
+- [x] 분석 과정 상세 시각화 (YOLO, CLIP, MBV2, OCR 4개 탭)
+- [x] 엔드 투 엔드 통합 완료 확인
 
 ---
 
