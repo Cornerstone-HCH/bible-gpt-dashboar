@@ -117,27 +117,48 @@ def p3_context_adjustment(theme_scores: Dict[str, float],
     
     # 시간대별 보정
     time_adjustments = {
-        "새벽": ["인도/소망", "예배/감사"],
-        "밤": ["보호/피난처", "위로/평강"],
+        "새벽": ["인도/소망", "예배/감사", "말씀/진리"],
+        "밤": ["보호/피난처", "평강·샬롬"],
         "자정": ["보호/피난처", "신뢰/의지"]
     }
     
     if time_bucket in time_adjustments:
         for theme in time_adjustments[time_bucket]:
             if theme in adjusted_scores:
-                adjusted_scores[theme] *= 1.2
+                # 새벽: x1.3, 밤/자정: 심판/경고는 S4에서 처리
+                adjusted_scores[theme] *= 1.3
     
+    # 자정/밤 심판/경고 억제 (기획서 8.3)
+    if time_bucket in ["밤", "자정"] and "심판/경고" in adjusted_scores:
+        adjusted_scores["심판/경고"] *= 0.2
+
     # 장소별 보정
     place_adjustments = {
-        "병원": ["위로/평강", "치유/회복"],
-        "교회": ["예배/감사", "공동체/연합"],
-        "산": ["창조/섭리", "영광/찬송"]
+        "병원": {
+            "themes": ["평강·샬롬", "치유·회복"],
+            "multiplier": 1.5
+        },
+        "교회": {
+            "themes": ["예배/감사", "공동체/연합", "말씀/진리"],
+            "multiplier": 1.3
+        },
+        "산": {
+            "themes": ["창조/섭리", "영광/찬송"],
+            "multiplier": 1.3
+        }
     }
     
     if place in place_adjustments:
-        for theme in place_adjustments[place]:
+        adj = place_adjustments[place]
+        for theme in adj["themes"]:
             if theme in adjusted_scores:
-                adjusted_scores[theme] *= 1.3
+                adjusted_scores[theme] *= adj["multiplier"]
+        
+        # 특정 장소 위험 주제 추가 억제 (기획서 8.3)
+        if place == "병원":
+            for risky in ["심판/경고", "회개"]:
+                if risky in adjusted_scores:
+                    adjusted_scores[risky] *= 0.3
     
     return adjusted_scores
 
@@ -174,7 +195,7 @@ def calculate_s3_orthodoxy(verse: Dict) -> float:
     risky_themes = ["심판/경고"]
     
     # 안전한 주제
-    safe_themes = ["위로/평강", "사랑/긍휼", "구원/복음"]
+    safe_themes = ["평강·샬롬", "사랑(아가페)", "소망·부활", "은혜", "보호·인도", "치유·회복", "믿음·신뢰"]
     
     score = 0.7  # 기본 점수
     
@@ -191,13 +212,17 @@ def calculate_s4_penalty(verse: Dict, symbols: List[str],
     """S4: 페널티 점수"""
     penalty = 0.0
     
-    # 민감한 조합 체크
-    if "침대" in symbols and "심판/경고" in verse.get("themes", []):
-        penalty += 0.5  # 침대(병상)에서 심판 구절은 부적절
+    # 민감한 조합 체크 (기획서 8.5)
+    if "침대" in symbols and any(t in verse.get("themes", []) for t in ["심판/경고", "회개"]):
+        penalty += 0.8  # 병상에서 심판/회개는 부적절
     
     # 밤 + 공포 조합
     if time_bucket in ["밤", "자정"] and "심판/경고" in verse.get("themes", []):
-        penalty += 0.3
+        penalty += 0.6
+    
+    # 눈물/고통 + 회개/정의 (기획서 8.5)
+    if any(s in symbols for s in ["눈물", "고통"]) and any(t in verse.get("themes", []) for t in ["회개", "정의·공의"]):
+        penalty += 0.5
     
     return min(1.0, penalty)
 
