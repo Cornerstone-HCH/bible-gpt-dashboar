@@ -27,15 +27,15 @@ st.set_page_config(
 @st.cache_data
 def load_data():
     """모든 데이터를 로드하고 캐싱"""
-    bible_objects_df, detection_labels_df, topic_weights_df, verse_bank_df = data_loader.load_all_data()
+    bible_objects_df, detection_labels_df, topic_weights_df, verse_bank_df, topic_symbol_mapping = data_loader.load_all_data()
     
     # 피사체 카테고리 생성
     symbol_categories = data_loader.get_symbol_categories(bible_objects_df)
     
-    # verse_bank를 기존 VERSES_DB 형식으로 변환
+    # verse_bank를 기존 VERSES_DB 형식으로 변환 (주제별 상징 매핑 포함)
     verses_db = []
     for idx, row in verse_bank_df.iterrows():
-        verse_dict = data_loader.convert_verse_to_dict(row)
+        verse_dict = data_loader.convert_verse_to_dict(row, topic_symbol_mapping)
         verses_db.append(verse_dict)
     
     return bible_objects_df, topic_weights_df, symbol_categories, verses_db
