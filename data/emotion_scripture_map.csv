@@ -1,0 +1,17 @@
+emotion_key,primary_emotion,context,topic_ids,priority,notes
+happy_general,happy,일반적 기쁨,"예배·찬양,은혜,사랑(아가페)",1,기쁨의 일반적 상황
+happy_wedding,happy,결혼/축하,"공동체·연합,사랑(아가페),은혜",1,결혼식이나 축하 행사
+happy_worship,happy,예배/찬양,"예배·찬양,임재·영광,은혜",1,예배 중 기쁨
+sad_general,sad,일반적 슬픔,"평강·샬롬,치유·회복,보호·인도",1,슬픔의 일반적 상황
+sad_loss,sad,상실/이별,"평강·샬롬,소망·부활,치유·회복",1,사별이나 이별
+sad_loneliness,sad,고독/외로움,"보호·인도,평강·샬롬,사랑(아가페)",1,외로움을 느낄 때
+angry_general,angry,일반적 분노,"평강·샬롬,순종·겸손,화해·용서(관계)",1,분노의 일반적 상황
+angry_injustice,angry,불의/부당함,"정의·공의,평강·샬롬,인내·시험",1,불의를 목격했을 때
+fear_general,fear,일반적 두려움,"보호·인도,믿음·신뢰,평강·샬롬",1,두려움의 일반적 상황
+fear_danger,fear,위험/위기,"보호·인도,믿음·신뢰,기도",1,위험한 상황
+fear_future,fear,미래/불확실성,"믿음·신뢰,보호·인도,소망·부활",1,미래에 대한 불안
+surprise_positive,surprise,긍정적 놀람,"은혜,창조·섭리,예배·찬양",1,좋은 일에 대한 놀람
+surprise_negative,surprise,부정적 놀람,"보호·인도,믿음·신뢰,평강·샬롬",1,충격적인 일
+disgust_general,disgust,혐오/거부감,"거룩·성화,정의·공의,순종·겸손",1,혐오감의 일반적 상황
+neutral_contemplation,neutral,묵상/성찰,"말씀·진리,지혜·분별,기도",1,조용한 묵상
+neutral_waiting,neutral,기다림/대기,"인내·시험,믿음·신뢰,기도",1,기다리는 상황
