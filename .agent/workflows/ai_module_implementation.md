@@ -1,32 +1,202 @@
-# AI 모듈 통합 구현 계획
+# AI 모듈 통합 구현 계획 (v2.0 - 정본 9장 기준)
 
-> Phase 3.2: 이미지 → 자동 상징 추출 파이프라인
+> Phase 3.2: 이미지 → 자동 상징 추출 파이프라인  
+> **기준 문서**: old_AI_setting.md (정본 9장 AI 로직)
 
 ---
 
-## 📋 **전체 아키텍처**
+## 📋 **전체 아키텍처 (정본 기준)**
 
 ```
-이미지 입력
+이미지 입력 + EXIF + 컨텍스트
     ↓
 ┌─────────────────────────────────────┐
-│  멀티모달 분석 (병렬 처리)           │
-├─────────────────────────────────────┤
-│  ① YOLO/COCO (객체 인식)            │
-│  ② CLIP (장면/감정 분석)            │
-│  ③ EasyOCR (텍스트 추출)            │
+│  전처리 & 민감 라우팅                │
+│  - EXIF 정규화                       │
+│  - 리사이즈 + 레터박스               │
+│  - safety_flags 생성                │
 └─────────────────────────────────────┘
     ↓
-신호 통합 & 가중치 적용
+┌─────────────────────────────────────┐
+│  Perception (지각 레이어)            │
+├─────────────────────────────────────┤
+│  ① 객체 인식 (YOLO)                 │
+│  ② 장면 분류 (CLIP)                 │
+│  ③ 감정 인식 (MobileNetV2) ⭐ 추가   │
+│  ④ OCR (EasyOCR)                    │
+│  ⑤ 랜드마크 인식 (선택)              │
+└─────────────────────────────────────┘
     ↓
-상징 리스트 (Top 5)
+┌─────────────────────────────────────┐
+│  P1: 상징 매핑 (46개 상징 체계) ⭐   │
+│  - 5개 코어 군 구조                  │
+│  - 객체/장면/감정 → 상징 변환        │
+└─────────────────────────────────────┘
     ↓
-P2 (주제 매핑) → P3 (컨텍스트) → Scoring
+┌─────────────────────────────────────┐
+│  P2: 주제 매핑 (120×24 매트릭스)    │
+│  - 상징 → 24개 주제                 │
+│  - S1-S4 점수 계산 ⭐                │
+└─────────────────────────────────────┘
+    ↓
+┌─────────────────────────────────────┐
+│  P3: 컨텍스트 보정                   │
+│  - 시간/장소/시각특징 보정           │
+│  - 신학적 안전 규칙 적용             │
+└─────────────────────────────────────┘
+    ↓
+벡터 검색 → 재랭킹 → Top-1/2 구절
 ```
 
 ---
 
-## 🔧 **모듈 1: YOLO/COCO 객체 인식**
+## 🔧 **모듈 0: 전처리 & 민감 라우팅** ⭐ 신규 추가
+
+### **목적**
+- Perception 실행 전 입력 표준화
+- 민감 상황 조기 탐지 및 안전 플로우 라우팅
+
+### **기술 스택**
+```python
+# requirements.txt 추가
+pillow>=10.0.0
+exifread>=3.0.0
+```
+
+### **구현 코드**
+```python
+# modules/preprocessor.py
+from PIL import Image
+import exifread
+from datetime import datetime
+
+class ImagePreprocessor:
+    def __init__(self, target_size=2048):
+        """
+        이미지 전처리 및 EXIF 정규화
+        
+        Args:
+            target_size: 긴 변 기준 리사이즈 크기
+        """
+        self.target_size = target_size
+    
+    def preprocess(self, image_path):
+        """
+        전처리 파이프라인
+        
+        Returns:
+            Dict: {
+                'image': PIL.Image,
+                'exif_time': datetime,
+                'orientation': int,
+                'metadata': dict
+            }
+        """
+        # 1. EXIF 읽기
+        with open(image_path, 'rb') as f:
+            tags = exifread.process_file(f)
+        
+        # 2. 이미지 로드 및 회전 보정
+        image = Image.open(image_path)
+        orientation = self._get_orientation(tags)
+        image = self._apply_orientation(image, orientation)
+        
+        # 3. 리사이즈 + 레터박스
+        image = self._resize_letterbox(image)
+        
+        # 4. 촬영 시각 추출
+        exif_time = self._extract_datetime(tags)
+        
+        return {
+            'image': image,
+            'exif_time': exif_time,
+            'orientation': orientation,
+            'metadata': {
+                'exif_present': len(tags) > 0,
+                'time_source': 'exif' if exif_time else 'upload'
+            }
+        }
+    
+    def _resize_letterbox(self, image):
+        """긴 변 기준 리사이즈 + 레터박스 패딩"""
+        w, h = image.size
+        scale = self.target_size / max(w, h)
+        new_w, new_h = int(w * scale), int(h * scale)
+        
+        # 리사이즈
+        image = image.resize((new_w, new_h), Image.LANCZOS)
+        
+        # 레터박스 (정사각형으로)
+        new_image = Image.new('RGB', (self.target_size, self.target_size), (0, 0, 0))
+        paste_x = (self.target_size - new_w) // 2
+        paste_y = (self.target_size - new_h) // 2
+        new_image.paste(image, (paste_x, paste_y))
+        
+        return new_image
+    
+    def _get_orientation(self, tags):
+        """EXIF Orientation 추출"""
+        if 'Image Orientation' in tags:
+            return int(str(tags['Image Orientation']))
+        return 1
+    
+    def _apply_orientation(self, image, orientation):
+        """Orientation 기반 회전 보정"""
+        if orientation == 3:
+            return image.rotate(180, expand=True)
+        elif orientation == 6:
+            return image.rotate(270, expand=True)
+        elif orientation == 8:
+            return image.rotate(90, expand=True)
+        return image
+    
+    def _extract_datetime(self, tags):
+        """촬영 시각 추출"""
+        if 'EXIF DateTimeOriginal' in tags:
+            dt_str = str(tags['EXIF DateTimeOriginal'])
+            return datetime.strptime(dt_str, '%Y:%m:%d %H:%M:%S')
+        return None
+
+
+# modules/safety_router.py
+class SafetyRouter:
+    def __init__(self):
+        """
+        민감 라우팅 모듈
+        Perception 이전에 민감 신호 탐지
+        """
+        self.sensitive_keywords = {
+            'medical': ['병원', 'ER', '응급실', '병실', 'ICU'],
+            'funeral': ['장례', '조문', '묘지', '관', '헌화'],
+            'child': ['유아', '어린이', '유치원', '초등학교'],
+            'politics': ['시위', '집회', '정당', '선거']
+        }
+    
+    def route(self, image, ocr_text=''):
+        """
+        민감 라우팅 실행
+        
+        Returns:
+            List[str]: safety_flags
+        """
+        flags = []
+        
+        # OCR 기반 민감 키워드 탐지
+        for category, keywords in self.sensitive_keywords.items():
+            if any(kw in ocr_text for kw in keywords):
+                flags.append(f'{category}_detected')
+        
+        # 이미지 기반 탐지는 Perception 이후 보완
+        
+        return flags
+```
+
+### **데이터 준비**
+- 없음 (전처리 로직만 필요)
+
+---
+
+## 🔧 **모듈 1: 객체 인식 (YOLO/COCO)**
 
 ### **목적**
 - 이미지 내 객체 감지 (사람, 침대, 십자가, 책 등)
