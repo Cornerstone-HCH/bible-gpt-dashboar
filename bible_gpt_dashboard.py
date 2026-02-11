@@ -183,8 +183,8 @@ def calculate_s4_penalty(verse: Dict, symbols: List[str],
     penalty = 0.0
     
     # 민감한 조합 체크
-    if "병상" in symbols and "심판/경고" in verse.get("themes", []):
-        penalty += 0.5  # 병상에서 심판 구절은 부적절
+    if "침대" in symbols and "심판/경고" in verse.get("themes", []):
+        penalty += 0.5  # 침대(병상)에서 심판 구절은 부적절
     
     # 밤 + 공포 조합
     if time_bucket in ["밤", "자정"] and "심판/경고" in verse.get("themes", []):
@@ -294,7 +294,7 @@ def main():
         
         # SIM-01 기본값 설정
         if 'sim01_loaded' in st.session_state and st.session_state.sim01_loaded:
-            default_symbols = ["병상", "어둠"]
+            default_symbols = ["침대", "어둠"]  # 병상 → 침대로 변경 (실제 데이터에 존재)
             default_time = "자정"
             default_place = "병원"
             st.info("✅ SIM-01 시나리오가 로드되었습니다!")
